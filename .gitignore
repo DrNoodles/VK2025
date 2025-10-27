@@ -1,0 +1,4 @@
+﻿.vs
+_OUT
+vcpkg_installed
+vcpkg_msbuild_vs2022.vcxproj.user

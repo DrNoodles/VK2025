@@ -1,0 +1,17 @@
+{
+  "dependencies": [
+    "fastgltf",
+    "fmt",
+    "glfw3",
+    "glm",
+    "gtest",
+    "imgui",
+    "ktx",
+    "sdl3",
+    "tinygltf",
+    "tinyobjloader",
+    "vk-bootstrap",
+    "vulkan-memory-allocator",
+    "nlohmann-json"
+  ]
+}
