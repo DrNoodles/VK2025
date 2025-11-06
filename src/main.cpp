@@ -1,25 +1,40 @@
-#if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
 #include <vulkan/vulkan_raii.hpp>
-#else
-import vulkan_hpp;
-#endif
-#include <GLFW/glfw3.h>
-
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
+#include <fmt/base.h>
+
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
 
 class HelloTriangleApplication
 {
 public:
-	void run()
+	void Run()
 	{
+		initWindow();
 		initVulkan();
 		mainLoop();
 		cleanup();
 	}
 
 private:
+	GLFWwindow* window = nullptr;
+	static constexpr int WIDTH { 800 };
+	static constexpr int HEIGHT { 600 };
+
+private:
+	void initWindow()
+	{
+		glfwInit();
+
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // no OGL - which is glfw's first love
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);   // we handle this ourselves
+
+		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", /*monitor*/nullptr, /*OGL crap*/nullptr);
+	}
+
 	void initVulkan()
 	{
 
@@ -28,12 +43,16 @@ private:
 
 	void mainLoop()
 	{
-
+		while (!glfwWindowShouldClose(window))
+		{
+			glfwPollEvents();
+		}
 	}
 
 	void cleanup()
 	{
-
+		glfwDestroyWindow(window);
+		glfwTerminate();
 	}
 };
 
@@ -43,7 +62,7 @@ int main()
 
 	try
 	{
-		app.run();
+		app.Run();
 	}
 	catch (const std::exception& e)
 	{
