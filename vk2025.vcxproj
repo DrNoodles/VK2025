@@ -137,7 +137,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp23</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8
  %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\include</AdditionalIncludeDirectories>
@@ -161,7 +161,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/utf-8
  %(AdditionalOptions)</AdditionalOptions>
-      <LanguageStandard>stdcpp23</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)vcpkg_installed\x64-windows\x64-windows\include</AdditionalIncludeDirectories>
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
