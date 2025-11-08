@@ -5,11 +5,21 @@
 
 class HelloTriangleApplication;
 
+static vk::DebugUtilsMessageSeverityFlagBitsEXT s_VkDebugSeverityFilter = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose;
+
+static vk::DebugUtilsMessageTypeFlagsEXT s_VkDebugTypeFilter = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation;
+
 static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity, vk::DebugUtilsMessageTypeFlagsEXT type, const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
+	if (!(type & s_VkDebugTypeFilter))
+		return vk::False;
+
+	if (severity < s_VkDebugSeverityFilter)
+		return vk::False;
+
 	HelloTriangleApplication* context = static_cast<HelloTriangleApplication*>(pUserData);
 
-	std::cerr << "validation layer: type " << to_string(type) << " msg: " << pCallbackData->pMessage << std::endl;
+	fmt::println(stderr, "[{}] VK-Validation{} {}", to_string(severity), to_string(type), pCallbackData->pMessage);
 
 	return vk::False;
 }
@@ -40,10 +50,12 @@ private: // DATA
 
 	GLFWwindow* m_window = nullptr;
 
-	vk::raii::Context  m_context;
-	vk::raii::Instance m_instance = nullptr;
-	vk::raii::PhysicalDevice m_physicalDevice = nullptr;
+	vk::raii::Context                m_context;
+	vk::raii::Instance               m_instance = nullptr;
+	vk::raii::PhysicalDevice         m_physicalDevice = nullptr;
+	vk::raii::Device                 m_device = nullptr;
 	vk::raii::DebugUtilsMessengerEXT m_debugMessenger = nullptr;
+	vk::raii::Queue                  m_graphicsQueue = nullptr;
 
 public:  // METHODS
 	void Run()
@@ -227,11 +239,44 @@ private: // METHODS
 		}
 	}
 
+	void createLogicalDevice()
+	{
+		u32 graphicsFamilyIndex = findQueueFamilies(m_physicalDevice);
+
+		// Create device
+		{
+			f32 queuePriority = 0.0f;
+			vk::DeviceQueueCreateInfo deviceQueueCreateInfo{ .queueFamilyIndex = graphicsFamilyIndex, .queueCount = 1, .pQueuePriorities = &queuePriority };
+
+			const auto featureChain = vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>{
+				vk::PhysicalDeviceFeatures2(),                      // vk::PhysicalDeviceFeatures2 (empty for now)
+				vk::PhysicalDeviceVulkan13Features()                // Enable dynamic rendering from Vulkan 1.3
+					//.setSynchronization2(true)
+					.setDynamicRendering(true),
+				vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT() // Enable extended dynamic state from the extension
+					.setExtendedDynamicState(true)    
+			};
+
+			const auto deviceCreateInfo = vk::DeviceCreateInfo()
+				.setPNext(&featureChain.get())
+				.setQueueCreateInfos({ deviceQueueCreateInfo })
+				.setPEnabledExtensionNames(m_requiredDeviceExtensions);
+
+			m_device = m_physicalDevice.createDevice(deviceCreateInfo);
+		}
+
+		// Get queues
+		{
+			m_graphicsQueue = m_device.getQueue(graphicsFamilyIndex, /*queueIndex*/0);
+		}
+	}
+
 	void initVulkan()
 	{
 		createInstance();
 		setupDebugMessenger();
 		pickPhysicalDevice();
+		createLogicalDevice();
 	}
 
 	void mainLoop()
