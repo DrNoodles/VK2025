@@ -21,8 +21,15 @@ private: // DATA
 	static constexpr int WIDTH{ 800 };
 	static constexpr int HEIGHT{ 600 };
 	
-	static constexpr std::array<char const*, 1> m_validationLayers{
+	static constexpr std::array<char const*, 1> m_validationLayers {
 		"VK_LAYER_KHRONOS_validation"
+	};
+
+	static constexpr std::array<const char*, 4> m_requiredDeviceExtensions {
+		vk::KHRSwapchainExtensionName,
+		vk::KHRSpirv14ExtensionName,
+		vk::KHRSynchronization2ExtensionName,
+		vk::KHRCreateRenderpass2ExtensionName
 	};
 
 	#ifdef NDEBUG
@@ -35,6 +42,7 @@ private: // DATA
 
 	vk::raii::Context  m_context;
 	vk::raii::Instance m_instance = nullptr;
+	vk::raii::PhysicalDevice m_physicalDevice = nullptr;
 	vk::raii::DebugUtilsMessengerEXT m_debugMessenger = nullptr;
 
 public:  // METHODS
@@ -164,10 +172,66 @@ private: // METHODS
 		m_debugMessenger = m_instance.createDebugUtilsMessengerEXT(createInfo);
 	}
 
+	uint32_t findQueueFamilies(vk::raii::PhysicalDevice physicalDevice)
+	{
+		// find the index of the first queue family that supports graphics
+		std::vector<vk::QueueFamilyProperties> queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
+
+		// get the first index into queueFamilyProperties which supports graphics
+		auto graphicsQueueFamilyProperty =
+			std::find_if(queueFamilyProperties.begin(),
+				queueFamilyProperties.end(),
+				[](vk::QueueFamilyProperties const& qfp) { return qfp.queueFlags & vk::QueueFlagBits::eGraphics; });
+
+		return static_cast<uint32_t>(std::distance(queueFamilyProperties.begin(), graphicsQueueFamilyProperty));
+	}
+
+	void pickPhysicalDevice()
+	{
+		std::vector<vk::raii::PhysicalDevice> devices = m_instance.enumeratePhysicalDevices();
+		const auto                            devIter = std::ranges::find_if(
+			devices,
+			[&](auto const& device)
+		{
+			// Check if the device supports the Vulkan 1.3 API version
+			bool supportsVulkan1_3 = device.getProperties().apiVersion >= VK_API_VERSION_1_3;
+
+			// Check if any of the queue families support graphics operations
+			auto queueFamilies = device.getQueueFamilyProperties();
+			bool supportsGraphics = std::ranges::any_of(queueFamilies, [](auto const& qfp) { return !!(qfp.queueFlags & vk::QueueFlagBits::eGraphics); });
+
+			// Check if all required device extensions are available
+			auto availableDeviceExtensions = device.enumerateDeviceExtensionProperties();
+			bool supportsAllRequiredExtensions = std::ranges::all_of(m_requiredDeviceExtensions, [&availableDeviceExtensions](auto const& requiredDeviceExtension)
+				{
+					return std::ranges::any_of(availableDeviceExtensions, [requiredDeviceExtension](auto const& availableDeviceExtension)
+						{
+							return strcmp(availableDeviceExtension.extensionName, requiredDeviceExtension) == 0;
+						});
+				});
+
+			auto features = device.template getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
+			bool supportsRequiredFeatures = features.template get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering &&
+				features.template get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState;
+
+			return supportsVulkan1_3 && supportsGraphics && supportsAllRequiredExtensions && supportsRequiredFeatures;
+		});
+
+		if (devIter != devices.end())
+		{
+			m_physicalDevice = *devIter;
+		}
+		else
+		{
+			throw std::runtime_error("failed to find a suitable GPU!");
+		}
+	}
+
 	void initVulkan()
 	{
 		createInstance();
 		setupDebugMessenger();
+		pickPhysicalDevice();
 	}
 
 	void mainLoop()
